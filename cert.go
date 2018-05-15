@@ -29,9 +29,13 @@ func (proxy *MiTMProxy) findOrCreateCert(host string) (*tls.Certificate, error) 
 	}
 
 	proxy.info("signing cert for : %s", host)
-	cert, err := proxy.signHostCert([]string{host})
-	if err == nil {
-		certCache[host] = cert
+	cert, ok := certCache[host]
+	var err error
+	if !ok {
+		cert, err = proxy.signHostCert([]string{host})
+		if err == nil {
+			certCache[host] = cert
+		}
 	}
 
 	return cert, err
