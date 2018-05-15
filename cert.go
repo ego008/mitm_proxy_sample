@@ -5,37 +5,35 @@ import (
 	"math/big"
 	"sort"
 	"time"
-
 	"encoding/binary"
-
-	crand "crypto/rand"
-
 	"crypto"
 	"crypto/sha1"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"sync"
+	crand "crypto/rand"
 )
 
 var certCache = map[string]*tls.Certificate{}
+var mt   sync.Mutex
 
 func (proxy *MiTMProxy) findOrCreateCert(host string) (*tls.Certificate, error) {
 
-	cert := certCache[host]
-	if cert != nil {
+	cert, ok := certCache[host]
+	if ok {
 		proxy.info("cert is found in cache : %s", host)
 		// TODO: check expires
 		return cert, nil
 	}
 
 	proxy.info("signing cert for : %s", host)
-	cert, ok := certCache[host]
 	var err error
-	if !ok {
-		cert, err = proxy.signHostCert([]string{host})
-		if err == nil {
-			certCache[host] = cert
-		}
+	cert, err = proxy.signHostCert([]string{host})
+	if err == nil {
+		mt.Lock()
+		certCache[host] = cert
+		mt.Unlock()
 	}
 
 	return cert, err
